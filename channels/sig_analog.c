@@ -90,6 +90,8 @@ static const struct {
 	{ ANALOG_SIG_SF_FEATDMF, "sf_featdmf" },
 	{ ANALOG_SIG_SF_FEATB, "sf_featb" },
 	{ ANALOG_SIG_E911, "e911" },
+	{ ANALOG_SIG_RPO, "rpo" },
+	{ ANALOG_SIG_RPT, "rpt" },
 };
 
 static const struct {
