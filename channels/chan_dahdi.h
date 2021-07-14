@@ -750,6 +750,8 @@ struct dahdi_pvt {
 #define SIG_FXOLS       DAHDI_SIG_FXOLS
 #define SIG_FXOGS       DAHDI_SIG_FXOGS
 #define SIG_FXOKS       DAHDI_SIG_FXOKS
+#define SIG_RPO			DAHDI_SIG_RPO
+#define SIG_RPT			DAHDI_SIG_RPT
 #define SIG_SF          DAHDI_SIG_SF
 #define SIG_SFWINK      (0x0100000 | DAHDI_SIG_SF)
 #define SIG_SF_FEATD    (0x0200000 | DAHDI_SIG_SF)
@@ -823,6 +825,8 @@ static inline int dahdi_analog_lib_handles(int signalling, int radio, int oprmod
 	case SIG_SF_FEATDMF:
 	case SIG_FEATDMF_TA:
 	case SIG_SF_FEATB:
+	case SIG_RPO:
+	case SIG_RPT:
 		break;
 	default:
 		/* The rest of the function should cover the remainder of signalling types */
