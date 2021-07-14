@@ -65,6 +65,8 @@ enum analog_sigtype {
 	ANALOG_SIG_SF_FEATDMF,
 	ANALOG_SIG_FEATDMF_TA,
 	ANALOG_SIG_SF_FEATB,
+	ANALOG_SIG_RPO,
+	ANALOG_SIG_RPT,
 };
 
 enum analog_tone {
@@ -103,6 +105,8 @@ enum analog_event {
 	ANALOG_EVENT_PULSEDIGIT = (1 << 16),
 	ANALOG_EVENT_DTMFDOWN = (1 << 17),
 	ANALOG_EVENT_DTMFUP = (1 << 18),
+	ANALOG_EVENT_POLREVERSE,
+	ANALOG_EVENT_POLNORMAL,
 };
 
 enum analog_sub {
