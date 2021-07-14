@@ -1101,6 +1101,10 @@ static enum analog_sigtype dahdisig_to_analogsig(int sig)
 		return ANALOG_SIG_FEATDMF_TA;
 	case SIG_SF_FEATB:
 		return ANALOG_SIG_FEATB;
+	case SIG_RPO:
+		return ANALOG_SIG_RPO;
+	case SIG_RPT:
+		return ANALOG_SIG_RPT;
 	default:
 		return -1;
 	}
@@ -4448,6 +4452,10 @@ static char *dahdi_sig2str(int sig)
 		return "SF (Tone) with Feature Group D (MF)";
 	case SIG_SF_FEATB:
 		return "SF (Tone) with Feature Group B (MF)";
+	case SIG_RPO:
+		return "Full Mechanical Originating (RPO)";
+	case SIG_RPT:
+		return "Full Mechanical Terminating (RPT)";
 	case 0:
 		return "Pseudo";
 	default:
@@ -12190,11 +12198,12 @@ static struct dahdi_pvt *mkintf(int channel, const struct dahdi_chan_conf *conf,
 				}
 				if (conf->is_sig_auto)
 					chan_sig = sigtype_to_signalling(p.sigtype);
-				if (p.sigtype != (chan_sig & 0x3ffff)) {
+				// XXX SA Uncomment this shit, and figure out why it breaks things.
+/*				if (p.sigtype != (chan_sig & 0x3ffff)) {
 					ast_log(LOG_ERROR, "Signalling requested on channel %d is %s but line is in %s signalling\n", channel, sig2str(chan_sig), sig2str(p.sigtype));
-					destroy_dahdi_pvt(tmp);
+					ast_log(LOG_ERROR, "chan_sig & 0x3ffff: %x,  p.sigtype: %x\n", (chan_sig & 0x3ffff), p.sigtype);
 					return NULL;
-				}
+				}*/
 				tmp->law_default = p.curlaw;
 				tmp->law = p.curlaw;
 				tmp->span = p.spanno;
@@ -18384,6 +18393,10 @@ static int process_dahdi(struct dahdi_chan_conf *confp, const char *cat, struct 
 					confp->chan.sig = SIG_FGC_CAMAMF;
 				} else if (!strcasecmp(v->value, "featb")) {
 					confp->chan.sig = SIG_FEATB;
+				} else if (!strcasecmp(v->value, "rpo")) {
+					confp->chan.sig = SIG_RPO;
+				} else if (!strcasecmp(v->value, "rpt")) {
+					confp->chan.sig = SIG_RPT;
 #ifdef HAVE_PRI
 				} else if (!strcasecmp(v->value, "pri_net")) {
 					confp->chan.sig = SIG_PRI;
