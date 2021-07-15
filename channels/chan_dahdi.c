@@ -2541,11 +2541,14 @@ static int my_is_off_hook(void *pvt)
 	int res;
 	struct dahdi_params par;
 
+	ast_debug(3, "Entered %s\n", __func__);
+
 	memset(&par, 0, sizeof(par));
 
-	if (p->subs[SUB_REAL].dfd > -1)
+	if (p->subs[SUB_REAL].dfd > -1) {
 		res = ioctl(p->subs[SUB_REAL].dfd, DAHDI_GET_PARAMS, &par);
-	else {
+		ast_debug(3, "par.rxoffhook after ioctl is %d\n", par.rxisoffhook);
+	} else {
 		/* Assume not off hook on CVRS */
 		res = 0;
 		par.rxisoffhook = 0;
@@ -2561,6 +2564,7 @@ static int my_is_off_hook(void *pvt)
 		return (par.rxbits > -1) || par.rxisoffhook;
 	}
 
+	ast_debug(3, "my_is_off_hook returns %d\n", par.rxisoffhook);
 	return par.rxisoffhook;
 }
 
@@ -12198,12 +12202,11 @@ static struct dahdi_pvt *mkintf(int channel, const struct dahdi_chan_conf *conf,
 				}
 				if (conf->is_sig_auto)
 					chan_sig = sigtype_to_signalling(p.sigtype);
-				// XXX SA Uncomment this shit, and figure out why it breaks things.
-/*				if (p.sigtype != (chan_sig & 0x3ffff)) {
+				if (p.sigtype != (chan_sig & 0x63ffff)) {
 					ast_log(LOG_ERROR, "Signalling requested on channel %d is %s but line is in %s signalling\n", channel, sig2str(chan_sig), sig2str(p.sigtype));
 					ast_log(LOG_ERROR, "chan_sig & 0x3ffff: %x,  p.sigtype: %x\n", (chan_sig & 0x3ffff), p.sigtype);
 					return NULL;
-				}*/
+				}
 				tmp->law_default = p.curlaw;
 				tmp->law = p.curlaw;
 				tmp->span = p.spanno;
@@ -13542,6 +13545,7 @@ static struct ast_channel *dahdi_request(const char *type, struct ast_format_cap
 		if (is_group_or_channel_match(p, start.span, start.groupmatch, &groupmatched, start.channelmatch, &channelmatched)
 			&& available(&p, channelmatched)) {
 			ast_debug(1, "Using channel %d\n", p->channel);
+			ast_debug(1, "mysig is: %s\n", sig2str(p->sig));
 
 			callwait = (p->owner != NULL);
 #ifdef HAVE_OPENR2
