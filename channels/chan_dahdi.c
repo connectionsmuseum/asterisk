@@ -2598,6 +2598,8 @@ static int my_flash(void *pvt)
 
 static inline int dahdi_set_hook(int fd, int hs);
 
+/* XXX SA analog callbacks */
+
 static int my_off_hook(void *pvt)
 {
 	struct dahdi_pvt *p = pvt;
@@ -5224,6 +5226,7 @@ static int dahdi_call(struct ast_channel *ast, const char *rdest, int timeout)
 	/* If this is analog signalling we can exit here */
 	if (dahdi_analog_lib_handles(p->sig, p->radio, p->oprmode)) {
 		p->callwaitrings = 0;
+	    ast_debug(1, "dahdi call is calling analog_call");	
 		res = analog_call(p->sig_pvt, ast, rdest, timeout);
 		ast_mutex_unlock(&p->lock);
 		return res;
