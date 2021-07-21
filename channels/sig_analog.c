@@ -1248,28 +1248,25 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 								// XXX SA Listen for pulses. Count em.
 /*
 
-		we should already be off hook by the time we get here
-		if we are off hook, then the selector (or term sender) is about to send us pulses
+		we go off hook, then the selector (or term sender) is about to send us pulses
 		we need to monitor dahdi for an exception (__dahdi_hooksig_pvt)??	
 		will probably have to add make/break times for pulses to include/dahdi/kernel.h
 		and add those to initialize_channel() in dahdi-base.c
-
 
 
    */
 
 		ast_debug(1, "Reached analog_call in RPO mode.\n");
 		
+		analog_off_hook(p);					/* Go off hook???  */
+
+
 		analog_set_dialing(p, 1);		/* Tell everyone else we're dialing */
 		if (ast_strlen_zero(c)) {
 			p->dialednone = 1;
 		}
 		ast_setstate(ast, AST_STATE_DIALING);
 	
-
-	/* Listen for pulses from the term sender / panel selector	*/
-	/* How do we get pulse notifications? */
-		
 
 
 	break;
@@ -1497,7 +1494,7 @@ int analog_answer(struct analog_pvt *p, struct ast_channel *ast)
 	int idx;
 	int oldstate = ast_channel_state(ast);
 
-	ast_debug(1, "%s %d\n", __FUNCTION__, p->channel);
+	ast_debug(1, "analog_answer  %d\n", p->channel);
 	ast_setstate(ast, AST_STATE_UP);
 	idx = analog_get_index(ast, p, 1);
 	if (idx < 0) {
