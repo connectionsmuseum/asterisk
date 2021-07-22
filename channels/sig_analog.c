@@ -90,6 +90,8 @@ static const struct {
 	{ ANALOG_SIG_SF_FEATDMF, "sf_featdmf" },
 	{ ANALOG_SIG_SF_FEATB, "sf_featb" },
 	{ ANALOG_SIG_E911, "e911" },
+	{ ANALOG_SIG_RPO, "rpo" },
+	{ ANALOG_SIG_RPT, "rpt" },
 };
 
 static const struct {
@@ -1241,6 +1243,34 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 		}
 		ast_setstate(ast, AST_STATE_DIALING);
 		break;
+
+	case ANALOG_SIG_RPO:		// XXX SA This is where we go when we are making an outbound call.
+								// XXX SA Listen for pulses. Count em.
+/*
+
+		we go off hook, then the selector (or term sender) is about to send us pulses
+		we need to monitor dahdi for an exception (__dahdi_hooksig_pvt)??	
+		will probably have to add make/break times for pulses to include/dahdi/kernel.h
+		and add those to initialize_channel() in dahdi-base.c
+
+
+   */
+
+		ast_debug(1, "Reached analog_call in RPO mode.\n");
+		
+		analog_off_hook(p);					/* Go off hook???  */
+
+
+		analog_set_dialing(p, 1);		/* Tell everyone else we're dialing */
+		if (ast_strlen_zero(c)) {
+			p->dialednone = 1;
+		}
+		ast_setstate(ast, AST_STATE_DIALING);
+	
+
+
+	break;
+
 	default:
 		ast_debug(1, "not yet implemented\n");
 		return -1;
@@ -1464,7 +1494,7 @@ int analog_answer(struct analog_pvt *p, struct ast_channel *ast)
 	int idx;
 	int oldstate = ast_channel_state(ast);
 
-	ast_debug(1, "%s %d\n", __FUNCTION__, p->channel);
+	ast_debug(1, "analog_answer  %d\n", p->channel);
 	ast_setstate(ast, AST_STATE_UP);
 	idx = analog_get_index(ast, p, 1);
 	if (idx < 0) {
@@ -1494,6 +1524,8 @@ int analog_answer(struct analog_pvt *p, struct ast_channel *ast)
 	case ANALOG_SIG_FXOLS:
 	case ANALOG_SIG_FXOGS:
 	case ANALOG_SIG_FXOKS:
+	case ANALOG_SIG_RPO:
+	case ANALOG_SIG_RPT:
 		/* Pick up the line */
 		ast_debug(1, "Took %s off hook\n", ast_channel_name(ast));
 		if (p->hanguponpolarityswitch) {
@@ -3716,7 +3748,7 @@ void *analog_handle_init_event(struct analog_pvt *i, int event)
 	ast_callid callid = 0;
 	int callid_created;
 
-	ast_debug(1, "channel (%d) - signaling (%d) - event (%s)\n",
+	ast_debug(1, "channel (%d) - signaling (%c) - event (%s)\n",
 				i->channel, i->sig, analog_event2str(event));
 
 	/* Handle an event on a given channel for the monitor thread. */
@@ -3779,6 +3811,10 @@ void *analog_handle_init_event(struct analog_pvt *i, int event)
 			}
 			ast_callid_threadstorage_auto_clean(callid, callid_created);
 			break;
+		case ANALOG_SIG_RPO:
+			/* For RPT card, listen for pulses, and act like a sender  */
+		case ANALOG_SIG_RPT:
+			/* For RPO card, send pulses, and act like a panel selector  */
 		case ANALOG_SIG_FXSLS:
 		case ANALOG_SIG_FXSGS:
 		case ANALOG_SIG_FXSKS:

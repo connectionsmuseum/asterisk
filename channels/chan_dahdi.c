@@ -1101,6 +1101,10 @@ static enum analog_sigtype dahdisig_to_analogsig(int sig)
 		return ANALOG_SIG_FEATDMF_TA;
 	case SIG_SF_FEATB:
 		return ANALOG_SIG_FEATB;
+	case SIG_RPO:
+		return ANALOG_SIG_RPO;
+	case SIG_RPT:
+		return ANALOG_SIG_RPT;
 	default:
 		return -1;
 	}
@@ -2537,11 +2541,14 @@ static int my_is_off_hook(void *pvt)
 	int res;
 	struct dahdi_params par;
 
+	ast_debug(3, "Entered %s\n", __func__);
+
 	memset(&par, 0, sizeof(par));
 
-	if (p->subs[SUB_REAL].dfd > -1)
+	if (p->subs[SUB_REAL].dfd > -1) {
 		res = ioctl(p->subs[SUB_REAL].dfd, DAHDI_GET_PARAMS, &par);
-	else {
+		ast_debug(3, "par.rxoffhook after ioctl is %d\n", par.rxisoffhook);
+	} else {
 		/* Assume not off hook on CVRS */
 		res = 0;
 		par.rxisoffhook = 0;
@@ -2557,6 +2564,7 @@ static int my_is_off_hook(void *pvt)
 		return (par.rxbits > -1) || par.rxisoffhook;
 	}
 
+	ast_debug(3, "my_is_off_hook returns %d\n", par.rxisoffhook);
 	return par.rxisoffhook;
 }
 
@@ -2589,6 +2597,8 @@ static int my_flash(void *pvt)
 }
 
 static inline int dahdi_set_hook(int fd, int hs);
+
+/* XXX SA analog callbacks */
 
 static int my_off_hook(void *pvt)
 {
@@ -4448,6 +4458,10 @@ static char *dahdi_sig2str(int sig)
 		return "SF (Tone) with Feature Group D (MF)";
 	case SIG_SF_FEATB:
 		return "SF (Tone) with Feature Group B (MF)";
+	case SIG_RPO:
+		return "Full Mechanical Originating (RPO)";
+	case SIG_RPT:
+		return "Full Mechanical Terminating (RPT)";
 	case 0:
 		return "Pseudo";
 	default:
@@ -5212,6 +5226,7 @@ static int dahdi_call(struct ast_channel *ast, const char *rdest, int timeout)
 	/* If this is analog signalling we can exit here */
 	if (dahdi_analog_lib_handles(p->sig, p->radio, p->oprmode)) {
 		p->callwaitrings = 0;
+	    ast_debug(1, "dahdi call is calling analog_call");	
 		res = analog_call(p->sig_pvt, ast, rdest, timeout);
 		ast_mutex_unlock(&p->lock);
 		return res;
@@ -12190,9 +12205,9 @@ static struct dahdi_pvt *mkintf(int channel, const struct dahdi_chan_conf *conf,
 				}
 				if (conf->is_sig_auto)
 					chan_sig = sigtype_to_signalling(p.sigtype);
-				if (p.sigtype != (chan_sig & 0x3ffff)) {
+				if (p.sigtype != (chan_sig & 0x63ffff)) {
 					ast_log(LOG_ERROR, "Signalling requested on channel %d is %s but line is in %s signalling\n", channel, sig2str(chan_sig), sig2str(p.sigtype));
-					destroy_dahdi_pvt(tmp);
+					ast_log(LOG_ERROR, "chan_sig & 0x3ffff: %x,  p.sigtype: %x\n", (chan_sig & 0x3ffff), p.sigtype);
 					return NULL;
 				}
 				tmp->law_default = p.curlaw;
@@ -13533,6 +13548,7 @@ static struct ast_channel *dahdi_request(const char *type, struct ast_format_cap
 		if (is_group_or_channel_match(p, start.span, start.groupmatch, &groupmatched, start.channelmatch, &channelmatched)
 			&& available(&p, channelmatched)) {
 			ast_debug(1, "Using channel %d\n", p->channel);
+			ast_debug(1, "mysig is: %s\n", sig2str(p->sig));
 
 			callwait = (p->owner != NULL);
 #ifdef HAVE_OPENR2
@@ -18384,6 +18400,10 @@ static int process_dahdi(struct dahdi_chan_conf *confp, const char *cat, struct 
 					confp->chan.sig = SIG_FGC_CAMAMF;
 				} else if (!strcasecmp(v->value, "featb")) {
 					confp->chan.sig = SIG_FEATB;
+				} else if (!strcasecmp(v->value, "rpo")) {
+					confp->chan.sig = SIG_RPO;
+				} else if (!strcasecmp(v->value, "rpt")) {
+					confp->chan.sig = SIG_RPT;
 #ifdef HAVE_PRI
 				} else if (!strcasecmp(v->value, "pri_net")) {
 					confp->chan.sig = SIG_PRI;
