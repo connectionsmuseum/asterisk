@@ -1253,18 +1253,52 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 		will probably have to add make/break times for pulses to include/dahdi/kernel.h
 		and add those to initialize_channel() in dahdi-base.c
 
-
    */
 
 		ast_debug(1, "Reached analog_call in RPO mode.\n");
 
+		c = strchr(dest, '/');		/* dunno why all the other cases do this */
+		if (c) {
+			c++;
+		} else {
+			c = "";
+		}
+
 	/* Do some RP math */
-		ast_debug(1, "Dialstring maybe: %s", p->dop.dialstr);	
+		ast_debug(1, "Dialstring maybe: %s", c);
 
+		int selections[6] = {0};		/* IB, IG, FB, FT, FU, null terminated */
+		char lineno[5] = {0};			/* subscribers line number */
+		int j = strlen(c-4); 			/* move back 4 spaces from end of dial string */
 
+		if (strlen(c) > 5) {
+			for (int pos = 0; pos < 5; pos++) {
+				lineno[pos] = c[j];
+				j++;
+			} 
+		} else {
+			strncpy(lineno, c, 4);
+		}
 		
-		analog_off_hook(p);					/* Go off hook */
+		int line_int = atoi(lineno);	/* Need an int to do math on */
 
+		// Remember to +1 to each of these for pulse counting purposes.
+		// (the first pulse we receive is the 0th, the second pulse is the 1st...)
+
+		selections[0] = line_int/2000+1;              // IB
+		selections[1] = (line_int % 2000)/500+1;      // IG
+		selections[2] = (line_int % 500)/100+1;       // FB
+		selections[3] = (line_int % 100)/10+1;        // FT
+		selections[4] = line_int % 10+1;              // FU
+
+		/* Convert the selections array into a str to be passed into analog dial */
+		for (int i = 0; i < 5; i++) {
+			sprintf(&p->dop.dialstr[i], "%d", selections[i]);
+		}
+
+		ast_debug(1, "pulses to count: %s", p->dop.dialstr);
+
+		analog_off_hook(p);					/* Go off hook */
 
 		analog_set_dialing(p, 1);		/* Tell everyone else we're dialing */
 		if (ast_strlen_zero(c)) {
@@ -1272,7 +1306,6 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 		}
 		ast_setstate(ast, AST_STATE_DIALING);
 	
-
 
 	break;
 
