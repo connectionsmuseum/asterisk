@@ -1740,6 +1740,10 @@ static int analog_canmatch_featurecode(const char *pickupexten, const char *exte
 	return 0;
 }
 
+int minVal(int a, int b) {
+	return a<b ? a : b;
+}
+
 static void *__analog_ss_thread(void *data)
 {
 	struct analog_pvt *p = data;
@@ -1963,6 +1967,9 @@ static void *__analog_ss_thread(void *data)
 
 			char anibuf[100];
 
+			struct ast_party_caller *caller;
+
+
 			/* cnoffset is the point at which we pull the calling number out
 			 * of anibuf. Must be the number of ani_info_digits + 1 to account
 			 * for the KP, which is considered a digit.  */
@@ -1998,11 +2005,16 @@ static void *__analog_ss_thread(void *data)
 			 * this as a complete spill for the purposes of setting anistart */
 			if ((res > 0) || (strlen(anibuf) >= 2)) {
 				char anistart[2] = "X";
+				char f[10] = {0};
 				if (strchr("#ABC", anibuf[strlen(anibuf) - 1])) {
 					anistart[0] = anibuf[strlen(anibuf) - 1];
 					anibuf[strlen(anibuf) - 1] = 0;
 				}
 				ast_set_callerid(chan, anibuf + cnoffset, NULL, anibuf + cnoffset);
+				
+				caller = ast_channel_caller(chan);
+				strncpy(f, &(anibuf[1]), minVal(p->ani_info_digits, sizeof(f)-1));
+				caller->ani2 = atoi(f);
 
 				anibuf[cnoffset] = 0;
 
