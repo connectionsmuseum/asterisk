@@ -1138,6 +1138,7 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 	case ANALOG_SIG_SF_FEATDMF:
 	case ANALOG_SIG_FEATDMF_TA:
 	case ANALOG_SIG_SF_FEATB:
+	case ANALOG_SIG_RPO:
 		c = strchr(dest, '/');
 		if (c) {
 			c++;
@@ -1148,6 +1149,14 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			ast_log(LOG_WARNING, "Number '%s' is shorter than stripmsd (%d)\n", c, p->stripmsd);
 			return -1;
 		}
+		/* analog_start sends us to a callback in chan_dahdi (my_start) which does an ioctl
+		 * to DAHDI (around 6850) to set the hookstate to DAHDI_START (or DAHDI_TXSTATE_OFFHOOK)
+		 * Then, we intercept that, and just pull the channel right off hook, which should hopefully
+		 * get caught by DAHDI, which sends a callback to Asterisk.
+
+		 * Still don't know how best to pass the dialstring to DAHDI, since DAHDI expects to outpulse.
+
+		   */
 		res = analog_start(p);
 		if (res < 0) {
 			if (errno != EINPROGRESS) {
@@ -1210,6 +1219,63 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 		case ANALOG_SIG_FEATB:
 			snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "M*%s#", c);
 			break;
+
+		case ANALOG_SIG_RPO:		// XXX SA This is where we go when we are making an outbound call.
+									// XXX SA Listen for pulses. Count em.
+	/*
+
+			we go off hook, then the selector (or term sender) is about to send us pulses
+			we need to monitor dahdi for an exception (__dahdi_hooksig_pvt)??	
+			will probably have to add make/break times for pulses to include/dahdi/kernel.h
+			and add those to initialize_channel() in dahdi-base.c
+
+	   */
+
+			ast_debug(1, "Reached analog_call in RPO mode.\n");
+#if 0
+			c = strchr(dest, '/');		/* dunno why all the other cases do this */
+			if (c) {
+				c++;
+			} else {
+				c = "";
+			}
+#endif
+		/* Do some RP math */
+
+			int selections[6] = {0};		/* IB, IG, FB, FT, FU, null terminated */
+			char lineno[5] = {0};			/* subscribers line number */
+			int j = strlen(c-4); 			/* move back 4 spaces from end of dial string */
+
+			if (strlen(c) > 5) {
+				for (int pos = 0; pos < 5; pos++) {
+					lineno[pos] = c[j];
+					j++;
+				} 
+			} else {
+				strncpy(lineno, c, 4);
+			}
+			
+			int line_int = atoi(lineno);	/* Need an int to do math on */
+
+			// Remember to +1 to each of these for pulse counting purposes.
+			// (the first pulse we receive is the 0th, the second pulse is the 1st...)
+
+			selections[0] = line_int/2000;              // IB
+			selections[1] = (line_int % 2000)/500;      // IG
+			selections[2] = (line_int % 500)/100;       // FB
+			selections[3] = (line_int % 100)/10;        // FT
+			selections[4] = line_int % 10;              // FU
+
+			/* Convert the selections array into a str to be passed into analog dial */
+			for (int i = 0; i < 5; i++) {
+				sprintf(&p->dop.dialstr[i], "%d", selections[i]);
+			}
+			ast_debug(1, "pulses to count: %s", p->dop.dialstr);
+#if 0
+			analog_off_hook(p);					/* Go off hook */
+#endif
+			break;
+
 		default:
 			if (p->pulse) {
 				snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "P%sw", c);
@@ -1243,76 +1309,10 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 		}
 		ast_setstate(ast, AST_STATE_DIALING);
 		break;
-
-	case ANALOG_SIG_RPO:		// XXX SA This is where we go when we are making an outbound call.
-								// XXX SA Listen for pulses. Count em.
-/*
-
-		we go off hook, then the selector (or term sender) is about to send us pulses
-		we need to monitor dahdi for an exception (__dahdi_hooksig_pvt)??	
-		will probably have to add make/break times for pulses to include/dahdi/kernel.h
-		and add those to initialize_channel() in dahdi-base.c
-
-   */
-
-		ast_debug(1, "Reached analog_call in RPO mode.\n");
-
-		c = strchr(dest, '/');		/* dunno why all the other cases do this */
-		if (c) {
-			c++;
-		} else {
-			c = "";
-		}
-
-	/* Do some RP math */
-		ast_debug(1, "Dialstring maybe: %s", c);
-
-		int selections[6] = {0};		/* IB, IG, FB, FT, FU, null terminated */
-		char lineno[5] = {0};			/* subscribers line number */
-		int j = strlen(c-4); 			/* move back 4 spaces from end of dial string */
-
-		if (strlen(c) > 5) {
-			for (int pos = 0; pos < 5; pos++) {
-				lineno[pos] = c[j];
-				j++;
-			} 
-		} else {
-			strncpy(lineno, c, 4);
-		}
-		
-		int line_int = atoi(lineno);	/* Need an int to do math on */
-
-		// Remember to +1 to each of these for pulse counting purposes.
-		// (the first pulse we receive is the 0th, the second pulse is the 1st...)
-
-		selections[0] = line_int/2000+1;              // IB
-		selections[1] = (line_int % 2000)/500+1;      // IG
-		selections[2] = (line_int % 500)/100+1;       // FB
-		selections[3] = (line_int % 100)/10+1;        // FT
-		selections[4] = line_int % 10+1;              // FU
-
-		/* Convert the selections array into a str to be passed into analog dial */
-		for (int i = 0; i < 5; i++) {
-			sprintf(&p->dop.dialstr[i], "%d", selections[i]);
-		}
-
-		ast_debug(1, "pulses to count: %s", p->dop.dialstr);
-
-		analog_off_hook(p);					/* Go off hook */
-
-		analog_set_dialing(p, 1);		/* Tell everyone else we're dialing */
-		if (ast_strlen_zero(c)) {
-			p->dialednone = 1;
-		}
-		ast_setstate(ast, AST_STATE_DIALING);
-	
-
-	break;
-
 	default:
 		ast_debug(1, "not yet implemented\n");
 		return -1;
-	}
+	}	
 	return 0;
 }
 
@@ -3527,7 +3527,7 @@ winkflashdone:
 		case ANALOG_SIG_FEATB:
 		case ANALOG_SIG_SF_FEATDMF:
 		case ANALOG_SIG_SF_FEATB:
-			ast_debug(1, "Got hook complete in MF FGD, waiting for wink now on channel %d\n",p->channel);
+			ast_debug(1, "Got hook complete in MF, waiting for wink now on channel %d\n",p->channel);
 			break;
 		default:
 			break;
