@@ -1257,8 +1257,13 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
    */
 
 		ast_debug(1, "Reached analog_call in RPO mode.\n");
+
+	/* Do some RP math */
+		ast_debug(1, "Dialstring maybe: %s", p->dop.dialstr);	
+
+
 		
-		analog_off_hook(p);					/* Go off hook???  */
+		analog_off_hook(p);					/* Go off hook */
 
 
 		analog_set_dialing(p, 1);		/* Tell everyone else we're dialing */
