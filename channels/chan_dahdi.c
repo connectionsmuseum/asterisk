@@ -2663,6 +2663,8 @@ static int my_start(void *pvt)
 	struct dahdi_pvt *p = pvt;
 	int x = DAHDI_START;
 
+	ast_debug(1, "In my_start() about to do DAHDI_HOOK ioctl\n");
+
 	return ioctl(p->subs[SUB_REAL].dfd, DAHDI_HOOK, &x);
 }
 
