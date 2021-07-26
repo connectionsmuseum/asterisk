@@ -406,4 +406,6 @@ int analog_fixup(struct ast_channel *oldchan, struct ast_channel *newchan, void 
 
 int analog_dnd(struct analog_pvt *p, int flag);
 
+int minVal(int a, int b);
+
 #endif /* _SIG_ANSLOG_H */
