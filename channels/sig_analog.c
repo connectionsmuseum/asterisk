@@ -2996,8 +2996,8 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 					analog_set_new_owner(p, NULL);
 					/* Don't start streaming audio yet if the incoming call isn't up yet */
 					if (ast_channel_state(p->subs[ANALOG_SUB_REAL].owner) != AST_STATE_UP) {
-						analog_set_dialing(p, 1);
-					}
+						analog_set_dialing(p, 1);		// XXX SA audio
+					}									
 					/* Unlock the call-waiting call that we swapped to real-call. */
 					ast_channel_unlock(p->subs[ANALOG_SUB_REAL].owner);
 					analog_ring(p);
@@ -3109,7 +3109,7 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 				analog_on_hook(p);
 				return NULL;
 			}
-			analog_set_dialing(p, 1);
+			analog_set_dialing(p, 1);			// XXX SA audio
 			return &p->subs[idx].f;
 		}
 		switch (p->sig) {
