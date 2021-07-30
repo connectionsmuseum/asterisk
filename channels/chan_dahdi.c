@@ -1925,6 +1925,8 @@ static void my_set_dialing(void *pvt, int is_dialing)
 	struct dahdi_pvt *p = pvt;
 
 	p->dialing = is_dialing;
+
+//	p->dialing = 0;
 }
 
 static void my_set_outgoing(void *pvt, int is_outgoing)
@@ -2662,6 +2664,8 @@ static int my_start(void *pvt)
 {
 	struct dahdi_pvt *p = pvt;
 	int x = DAHDI_START;
+
+	ast_debug(1, "In my_start() about to do DAHDI_HOOK ioctl\n");
 
 	return ioctl(p->subs[SUB_REAL].dfd, DAHDI_HOOK, &x);
 }
@@ -7673,7 +7677,7 @@ static struct ast_frame *dahdi_handle_event(struct ast_channel *ast)
 					p->cid_suppress_expire = 0;
 					p->owner = NULL;
 					/* Don't start streaming audio yet if the incoming call isn't up yet */
-					if (ast_channel_state(p->subs[SUB_REAL].owner) != AST_STATE_UP)
+					if (ast_channel_state(p->subs[SUB_REAL].owner) != AST_STATE_UP)  // XXX SA audio
 						p->dialing = 1;
 					dahdi_ring_phone(p);
 				} else if (p->subs[SUB_THREEWAY].owner) {
