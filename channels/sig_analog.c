@@ -1274,10 +1274,7 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			p->dop.op = ANALOG_DIAL_OP_REPLACE;
 			res = analog_dial_digits(p, ANALOG_SUB_REAL, &p->dop);
 
-#if 0
 			analog_off_hook(p);					/* Go off hook */
-#endif			
-
 			break;
 
 		default:
