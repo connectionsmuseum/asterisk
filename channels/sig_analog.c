@@ -1273,7 +1273,23 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			ast_debug(1, "pulses to count: %s", p->dop.dialstr);
 #if 0
 			analog_off_hook(p);					/* Go off hook */
-#endif
+
+
+			/* XXX SA ripped right from the fuckin event handler "Got event" */
+			if (!ast_strlen_zero(p->dop.dialstr)) {
+				snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "F%s", c);
+				res = analog_dial_digits(p, ANALOG_SUB_REAL, &p->dop);
+				if (res) {
+					p->dop.dialstr[0] = '\0';
+					return NULL;
+				} else {
+					ast_debug(1, "Sent deferred digit string on channel %d: %s\n", p->channel, p->dop.dialstr);
+				}
+			}
+			p->dop.dialstr[0] = '\0';
+#endif			
+
+
 			break;
 
 		default:
@@ -3554,6 +3570,7 @@ winkflashdone:
 		case ANALOG_SIG_SF_FEATDMF:
 		case ANALOG_SIG_SF_FEATB:
 		case ANALOG_SIG_EMWINK:
+			// XXX SA this is where we start dialing on E&M VVVVV
 			/* FGD MF and EMWINK *Must* wait for wink */
 			if (!ast_strlen_zero(p->dop.dialstr)) {
 				res = analog_dial_digits(p, ANALOG_SUB_REAL, &p->dop);
