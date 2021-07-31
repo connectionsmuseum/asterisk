@@ -27,6 +27,8 @@
 	<support_level>core</support_level>
  ***/
 
+#define HEARPULSING 1
+
 #include "asterisk.h"
 
 #include <errno.h>
@@ -1359,7 +1361,14 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 	default:
 		ast_debug(1, "not yet implemented\n");
 		return -1;
-	}	
+	}
+
+#if HEARPULSING == 1
+	/* hearpulsing */
+	ast_verb(3, "Enqueueing progress frame when dialling has begun in chan %d\n", p->channel);
+	ast_queue_control(p->owner, AST_CONTROL_PROGRESS);
+#endif
+
 	return 0;
 }
 
