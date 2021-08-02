@@ -2920,7 +2920,10 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 		}
 		x = analog_is_dialing(p, idx);
 		if (!x) { /* if not still dialing in driver  */
+<<<<<<< HEAD
 			ast_debug(3, "Dialing appears complete");
+=======
+>>>>>>> now dials from asterisk, but no audio
 			analog_set_echocanceller(p, 1);
 			if (p->echobreak) {
 				analog_train_echocanceller(p);
