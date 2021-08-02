@@ -1268,9 +1268,14 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 
 			/* Convert the selections array into a str to be passed into analog dial */
 			for (int i = 0; i < 5; i++) {
-				sprintf(&p->dop.dialstr[i], "%d", selections[i]);
+				sprintf(&c[i], "%d", selections[i]);
 			}
-			ast_debug(1, "pulses to count: %s", p->dop.dialstr);
+			ast_debug(1, "pulses to count: %s", c);
+			snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "%s", c);
+			ast_debug(1, "sending to analog_dial_digits: %s", p->dop.dialstr);
+			p->dop.op = ANALOG_DIAL_OP_REPLACE;
+			res = analog_dial_digits(p, ANALOG_SUB_REAL, &p->dop);
+
 #if 0
 			analog_off_hook(p);					/* Go off hook */
 
@@ -2877,7 +2882,7 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 			break;
 		}
 		x = analog_is_dialing(p, idx);
-		if (!x) { /* if not still dialing in driver */
+		if (!x) { /* if not still dialing in driver  */
 			analog_set_echocanceller(p, 1);
 			if (p->echobreak) {
 				analog_train_echocanceller(p);
