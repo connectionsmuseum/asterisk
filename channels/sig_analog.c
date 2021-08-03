@@ -1234,18 +1234,11 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 	   */
 
 			ast_debug(1, "Reached analog_call in RPO mode.\n");
-#if 0
-			c = strchr(dest, '/');		/* dunno why all the other cases do this */
-			if (c) {
-				c++;
-			} else {
-				c = "";
-			}
-#endif
+
 		/* Do some RP math */
 
-			int selections[6] = {0};		/* IB, IG, FB, FT, FU, null terminated */
-			char lineno[5] = {0};			/* subscribers line number */
+			int selections[5] = {0};		/* IB, IG, FB, FT, FU */
+			char lineno[4] = {0};			/* subscribers line number */
 			int j = strlen(c-4); 			/* move back 4 spaces from end of dial string */
 
 			if (strlen(c) > 5) {
@@ -1262,11 +1255,11 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			// Remember to +1 to each of these for pulse counting purposes.
 			// (the first pulse we receive is the 0th, the second pulse is the 1st...)
 
-			selections[0] = line_int/2000;              // IB
-			selections[1] = (line_int % 2000)/500;      // IG
-			selections[2] = (line_int % 500)/100;       // FB
-			selections[3] = (line_int % 100)/10;        // FT
-			selections[4] = line_int % 10;              // FU
+			selections[0] = line_int/2000;              // Incoming Brush
+			selections[1] = (line_int % 2000)/500;      // Incoming Group
+			selections[2] = (line_int % 500)/100;       // Final Brush
+			selections[3] = (line_int % 100)/10;        // Final Tens
+			selections[4] = line_int % 10;              // Final Units
 
 			/* Convert the selections array into a str to be passed into analog dial */
 			for (int i = 0; i < 5; i++) {
@@ -1280,22 +1273,7 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 
 #if 0
 			analog_off_hook(p);					/* Go off hook */
-
-
-			/* XXX SA ripped right from the fuckin event handler "Got event" */
-			if (!ast_strlen_zero(p->dop.dialstr)) {
-				snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "F%s", c);
-				res = analog_dial_digits(p, ANALOG_SUB_REAL, &p->dop);
-				if (res) {
-					p->dop.dialstr[0] = '\0';
-					return NULL;
-				} else {
-					ast_debug(1, "Sent deferred digit string on channel %d: %s\n", p->channel, p->dop.dialstr);
-				}
-			}
-			p->dop.dialstr[0] = '\0';
 #endif			
-
 
 			break;
 
@@ -2971,12 +2949,14 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 		}
 		x = analog_is_dialing(p, idx);
 		if (!x) { /* if not still dialing in driver  */
+			ast_debug(3, "Dialing appears complete");
 			analog_set_echocanceller(p, 1);
 			if (p->echobreak) {
 				analog_train_echocanceller(p);
 				ast_copy_string(p->dop.dialstr, p->echorest, sizeof(p->dop.dialstr));
 				p->dop.op = ANALOG_DIAL_OP_REPLACE;
 				analog_dial_digits(p, ANALOG_SUB_REAL, &p->dop);
+				ast_debug(3, "Bitch better not be dialing more digits if RPO");
 				p->echobreak = 0;
 			} else {
 				analog_set_dialing(p, 0);
@@ -3003,7 +2983,7 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 							|| (mysig == ANALOG_SIG_FGC_CAMAMF) || (mysig == ANALOG_SIG_FEATB)
 							|| (mysig == ANALOG_SIG_SF) || (mysig == ANALOG_SIG_SFWINK)
 							|| (mysig == ANALOG_SIG_SF_FEATD) || (mysig == ANALOG_SIG_SF_FEATDMF)
-							|| (mysig == ANALOG_SIG_SF_FEATB)))) {
+							|| (mysig == ANALOG_SIG_SF_FEATB) || (mysig == ANALOG_SIG_RPO)))) {
 						ast_setstate(ast, AST_STATE_RINGING);
 					} else if (!p->answeronpolarityswitch) {
 						ast_setstate(ast, AST_STATE_UP);
@@ -3017,6 +2997,17 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 					}
 				}
 			}
+#if 0
+			if (mysig == ANALOG_SIG_RPO) {
+				ast_debug(1, "Done dialing, recognized RPO state. Doing the thing");
+				ast_setstate(ast, AST_STATE_RINGING);
+				ast_setstate(ast, AST_STATE_UP);
+				p->subs[idx].f.frametype = AST_FRAME_CONTROL;
+				p->subs[idx].f.subclass.integer = AST_CONTROL_ANSWER;
+
+			}
+#endif
+
 		}
 		break;
 	case ANALOG_EVENT_ALARM:
