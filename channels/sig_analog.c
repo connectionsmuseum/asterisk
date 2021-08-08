@@ -1239,9 +1239,10 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 
 			int selections[5] = {0};		/* IB, IG, FB, FT, FU */
 			char lineno[4] = {0};			/* subscribers line number */
-			int j = strlen(c-4); 			/* move back 4 spaces from end of dial string */
+			int j = strlen(c)-4; 			/* move back 4 spaces from end of dial string */
 
-			if (strlen(c) > 5) {
+			ast_debug(1,"c %s", c);
+			if (strlen(c) > 4) {			/* assume office selections */
 				for (int pos = 0; pos < 5; pos++) {
 					lineno[pos] = c[j];
 					j++;
@@ -1249,6 +1250,8 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			} else {
 				strncpy(lineno, c, 4);
 			}
+
+			ast_debug(1,"lineno %s", lineno);
 			
 			int line_int = atoi(lineno);	/* Need an int to do math on */
 
@@ -1310,35 +1313,6 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 		}
 		ast_setstate(ast, AST_STATE_DIALING);
 		break;
-
-	case ANALOG_SIG_RPO:		// XXX SA This is where we go when we are making an outbound call.
-								// XXX SA Listen for pulses. Count em.
-/*
-
-		we go off hook, then the selector (or term sender) is about to send us pulses
-		we need to monitor dahdi for an exception (__dahdi_hooksig_pvt)??	
-		will probably have to add make/break times for pulses to include/dahdi/kernel.h
-		and add those to initialize_channel() in dahdi-base.c
-
-
-   */
-
-		ast_debug(1, "Reached analog_call in RPO mode.\n");
-
-	/* Do some RP math */
-		ast_debug(1, "Dialstring maybe: %s", p->dop.dialstr);	
-
-		
-		analog_off_hook(p);					/* Go off hook */
-
-
-		analog_set_dialing(p, 1);		/* Tell everyone else we're dialing */
-		if (ast_strlen_zero(c)) {
-			p->dialednone = 1;
-		}
-		ast_setstate(ast, AST_STATE_DIALING);
-	
-
 
 		break;
 	default:
