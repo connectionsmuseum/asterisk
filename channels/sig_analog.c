@@ -1228,7 +1228,7 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 
 			int selections[7] = {0};		/* OB, OG, IB, IG, FB, FT, FU */
 			char lineno[4] = {0};			/* subscribers line number */
-			int SKO;						/* Skip office, 0=False, 1=True */
+			int officereq;					/* Office required, 0=False, 1=True */
 
 			/* If the dialstring is longer than 4, we might need to make (optional)
 			   office selections. For this case, we will accept 6 digits, and send
@@ -1240,8 +1240,8 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			   digit line number
 			*/
 			if (strlen(c) == 6) {
-				/* Skip Office is False--we need it */
-				SKO = 0;
+				/* Do office selections */
+				officereq = 1;
 				/* move back 4 spaces from end of dial string */
 				int j = strlen(c)-4; 			
 				/* extract the line number from the end */
@@ -1250,12 +1250,12 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 					j++;
 				} 
 				/* and copy the first two chars into OB and OG */
-				selections[0] = c[1] - '0';
-				selections[1] = c[2] - '0';
+				selections[0] = c[0] - '0';
+				selections[1] = c[1] - '0';
 
 			} else if (strlen(c) == 4) {
-				/* Skip Office is True */
-				SKO = 1;
+				/* Skip Office */
+				officereq = 0;
 				/* just copy the line number over without fanfare */
 				strncpy(lineno, c, 4);
 			} else {
@@ -1281,13 +1281,13 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			
 			/* if skipping office, then just print the last 5, and send
 			   all selections to DAHDI */
-			if (SKO == 1) {
+			if (officereq == 0) {
 				ast_debug(1, "pulses to count: %s", &c[strlen(c)-5]);
 				snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "%s", c);
 
 			/* if not skipping office, then print all selections and
 			   send to DAHDI prepended by a 'Z' */
-			} else if (SKO == 0) {
+			} else if (officereq == 1) {
 				ast_debug(1, "pulses to count, including office selections: %s", c);
 				snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "Z%s", c);
 			}
