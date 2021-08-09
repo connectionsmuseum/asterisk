@@ -308,6 +308,11 @@ struct analog_pvt {
 	/*! \brief The SMDI interface to get SMDI messages from. */
 	struct ast_smdi_interface *smdi_iface;
 
+	/*!\brief TRUE if the caller should hear signaling on analog
+	 * \analog channels
+	 */
+	unsigned int hearpulsing:1;
+
 	/* Not used for anything but log messages.  Could be just the TCID */
 	int channel;					/*!< Channel Number */
 
