@@ -965,6 +965,7 @@ static struct dahdi_chan_conf dahdi_chan_conf_default(void)
 			.use_callerid = 1,
 			.sig = -1,
 			.outsigmod = -1,
+			.hearpulsing = 0,
 
 			.cid_rxgain = +5.0,
 
@@ -1103,10 +1104,6 @@ static enum analog_sigtype dahdisig_to_analogsig(int sig)
 		return ANALOG_SIG_FEATDMF_TA;
 	case SIG_SF_FEATB:
 		return ANALOG_SIG_FEATB;
-	case SIG_RPO:
-		return ANALOG_SIG_RPO;
-	case SIG_RPT:
-		return ANALOG_SIG_RPT;
 	default:
 		return -1;
 	}
@@ -4464,10 +4461,6 @@ static char *dahdi_sig2str(int sig)
 		return "SF (Tone) with Feature Group D (MF)";
 	case SIG_SF_FEATB:
 		return "SF (Tone) with Feature Group B (MF)";
-	case SIG_RPO:
-		return "Full Mechanical Originating (RPO)";
-	case SIG_RPT:
-		return "Full Mechanical Terminating (RPT)";
 	case 0:
 		return "Pseudo";
 	default:
@@ -12720,6 +12713,7 @@ static struct dahdi_pvt *mkintf(int channel, const struct dahdi_chan_conf *conf,
 		tmp->dahditrcallerid = conf->chan.dahditrcallerid;
 		tmp->restrictcid = conf->chan.restrictcid;
 		tmp->use_callingpres = conf->chan.use_callingpres;
+		tmp->hearpulsing = conf->chan.hearpulsing;
 		if (tmp->usedistinctiveringdetection) {
 			if (!tmp->use_callerid) {
 				ast_log(LOG_NOTICE, "Distinctive Ring detect requires 'usecallerid' be on\n");
@@ -12870,6 +12864,7 @@ static struct dahdi_pvt *mkintf(int channel, const struct dahdi_chan_conf *conf,
 		tmp->ani_info_digits = conf->chan.ani_info_digits;
 		tmp->ani_wink_time = conf->chan.ani_wink_time;
 		tmp->ani_timeout = conf->chan.ani_timeout;
+		tmp->hearpulsing = conf->chan.hearpulsing;
 		tmp->hanguponpolarityswitch = conf->chan.hanguponpolarityswitch;
 		tmp->sendcalleridafter = conf->chan.sendcalleridafter;
 		ast_cc_copy_config_params(tmp->cc_params, conf->chan.cc_params);
@@ -12978,6 +12973,7 @@ static struct dahdi_pvt *mkintf(int channel, const struct dahdi_chan_conf *conf,
 				analog_p->ani_info_digits = conf->chan.ani_info_digits;
 				analog_p->ani_timeout = conf->chan.ani_timeout;
 				analog_p->ani_wink_time = conf->chan.ani_wink_time;
+				analog_p->hearpulsing = conf->chan.hearpulsing;
 				analog_p->hanguponpolarityswitch = conf->chan.hanguponpolarityswitch;
 				analog_p->permcallwaiting = conf->chan.callwaiting; /* permcallwaiting possibly modified in analog_config_complete */
 				analog_p->callreturn = conf->chan.callreturn;
@@ -18286,6 +18282,9 @@ static int process_dahdi(struct dahdi_chan_conf *confp, const char *cat, struct 
 			confp->chan.hanguponpolarityswitch = ast_true(v->value);
 		} else if (!strcasecmp(v->name, "sendcalleridafter")) {
 			confp->chan.sendcalleridafter = atoi(v->value);
+		} else if(!strcasecmp(v->name, "hearpulsing")) {
+				/* Signaling audible to caller */
+			confp->chan.hearpulsing = ast_true(v->value);
 		} else if (!strcasecmp(v->name, "mwimonitornotify")) {
 			ast_copy_string(mwimonitornotify, v->value, sizeof(mwimonitornotify));
 		} else if (ast_cc_is_config_param(v->name)) {
@@ -18409,10 +18408,6 @@ static int process_dahdi(struct dahdi_chan_conf *confp, const char *cat, struct 
 					confp->chan.sig = SIG_FGC_CAMAMF;
 				} else if (!strcasecmp(v->value, "featb")) {
 					confp->chan.sig = SIG_FEATB;
-				} else if (!strcasecmp(v->value, "rpo")) {
-					confp->chan.sig = SIG_RPO;
-				} else if (!strcasecmp(v->value, "rpt")) {
-					confp->chan.sig = SIG_RPT;
 #ifdef HAVE_PRI
 				} else if (!strcasecmp(v->value, "pri_net")) {
 					confp->chan.sig = SIG_PRI;

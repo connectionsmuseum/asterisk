@@ -1356,8 +1356,11 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 
 #if HEARPULSING == 1
 	/* hearpulsing */
-	ast_verb(3, "Enqueueing progress frame when dialling has begun in chan %d\n", p->channel);
-	ast_queue_control(p->owner, AST_CONTROL_PROGRESS);
+	ast_verb(1, "Hearpulsing is %d\n", p->hearpulsing);
+	if (p->hearpulsing == 1) {
+		ast_verb(3, "Enqueueing progress frame when dialling has begun in chan %d\n", p->channel);
+		ast_queue_control(p->owner, AST_CONTROL_PROGRESS);
+	}
 #endif
 
 	return 0;
