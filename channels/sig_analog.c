@@ -1223,64 +1223,96 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			break;
 
 		case ANALOG_SIG_RPO:		// XXX SA This is where we go when we are making an outbound call.
-									// XXX SA Listen for pulses. Count em.
-	/*
-
-			we go off hook, then the selector (or term sender) is about to send us pulses
-			we need to monitor dahdi for an exception (__dahdi_hooksig_pvt)??	
-			will probably have to add make/break times for pulses to include/dahdi/kernel.h
-			and add those to initialize_channel() in dahdi-base.c
-
-	   */
 
 			ast_debug(1, "Reached analog_call in RPO mode.\n");
 
 		/* Do some RP math */
 
-			int selections[5] = {0};		/* IB, IG, FB, FT, FU */
+			int selections[7] = {0};		/* OB, OG, IB, IG, FB, FT, FU */
 			char lineno[4] = {0};			/* subscribers line number */
-			int j = strlen(c)-4; 			/* move back 4 spaces from end of dial string */
+			int SKO;						/* Skip office, 0=False, 1=True */
 
-			ast_debug(1,"c %s", c);
-			if (strlen(c) > 4) {			/* assume office selections */
-				for (int pos = 0; pos < 5; pos++) {
+			/* If the dialstring is longer than 4, we might need to make (optional)
+			   office selections. For this case, we will accept 6 digits, and send
+			   them to DAHDI prepended with a "Z" to indicate to the sender that OB, OG
+			   are required.
+
+			   The dialstring without office selections is just the 4 digit line number.
+			   The dialstring with office selections is 2 digits for OB, OG, plus the 4
+			   digit line number
+			*/
+			if (strlen(c) == 6) {
+				/* Skip Office is False--we need it */
+				SKO = 0;
+				/* move back 4 spaces from end of dial string */
+				int j = strlen(c)-4; 			
+				/* extract the line number from the end */
+				for (int pos = 0; pos < 4; pos++) {
 					lineno[pos] = c[j];
 					j++;
 				} 
-			} else {
+				/* and copy the first two chars into OB and OG */
+				selections[0] = c[1] - '0';
+				selections[1] = c[2] - '0';
+
+			} else if (strlen(c) == 4) {
+				/* Skip Office is True */
+				SKO = 1;
+				/* just copy the line number over without fanfare */
 				strncpy(lineno, c, 4);
+			} else {
+				ast_log(LOG_WARNING, "RP dialstring must be 4 or 6 digits only\n");
+			return -1;
 			}
 
+<<<<<<< HEAD
 			ast_debug(1,"lineno %s", lineno);
 			
+=======
+>>>>>>> just added office selections math
 			int line_int = atoi(lineno);	/* Need an int to do math on */
 
 			// Remember to +1 to each of these for pulse counting purposes.
 			// (the first pulse we receive is the 0th, the second pulse is the 1st...)
 
-			selections[0] = line_int/2000;              // Incoming Brush
-			selections[1] = (line_int % 2000)/500;      // Incoming Group
-			selections[2] = (line_int % 500)/100;       // Final Brush
-			selections[3] = (line_int % 100)/10;        // Final Tens
-			selections[4] = line_int % 10;              // Final Units
+			selections[2] = line_int/2000;              // Incoming Brush
+			selections[3] = (line_int % 2000)/500;      // Incoming Group
+			selections[4] = (line_int % 500)/100;       // Final Brush
+			selections[5] = (line_int % 100)/10;        // Final Tens
+			selections[6] = line_int % 10;              // Final Units
 
 			/* Convert the selections array into a str to be passed into analog dial */
-			for (int i = 0; i < 5; i++) {
+			for (int i = 0; i < 7; i++) {
 				sprintf(&c[i], "%d", selections[i]);
 			}
-			ast_debug(1, "pulses to count: %s", c);
-			snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "%s", c);
+			
+			/* if skipping office, then just print the last 5, and send
+			   all selections to DAHDI */
+			if (SKO == 1) {
+				ast_debug(1, "pulses to count: %s", &c[strlen(c)-5]);
+				snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "%s", c);
+
+			/* if not skipping office, then print all selections and
+			   send to DAHDI prepended by a 'Z' */
+			} else if (SKO == 0) {
+				ast_debug(1, "pulses to count, including office selections: %s", c);
+				snprintf(p->dop.dialstr, sizeof(p->dop.dialstr), "Z%s", c);
+			}
 			ast_debug(1, "sending to analog_dial_digits: %s", p->dop.dialstr);
 			p->dop.op = ANALOG_DIAL_OP_REPLACE;
 			res = analog_dial_digits(p, ANALOG_SUB_REAL, &p->dop);
 
+<<<<<<< HEAD
 			analog_off_hook(p);					/* Go off hook */
 <<<<<<< HEAD
 =======
 #endif			
 
 >>>>>>> audio works
+=======
+>>>>>>> just added office selections math
 			break;
+
 
 		default:
 			if (p->pulse) {
