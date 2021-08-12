@@ -4459,9 +4459,9 @@ static char *dahdi_sig2str(int sig)
 	case SIG_SF_FEATB:
 		return "SF (Tone) with Feature Group B (MF)";
 	case SIG_RPO:
-		return "Full Mechanical Originating (RPO)";
+	   return "Full Mechanical Originating (RPO)";
 	case SIG_RPT:
-		return "Full Mechanical Terminating (RPT)";
+	   return "Full Mechanical Terminating (RPT)";
 	case 0:
 		return "Pseudo";
 	default:
