@@ -3849,10 +3849,8 @@ void *analog_handle_init_event(struct analog_pvt *i, int event)
 			}
 			ast_callid_threadstorage_auto_clean(callid, callid_created);
 			break;
-		case ANALOG_SIG_RPO:
-			/* For RPT card, listen for pulses, and act like a sender  */
-		case ANALOG_SIG_RPT:
-			/* For RPO card, send pulses, and act like a panel selector  */
+		case ANALOG_SIG_RPO:		/* For RPT card, do nothing special. This is only useful for OGTs. */
+		case ANALOG_SIG_RPT:		/* For RPO card, send pulses, and act like a panel selector  */
 		case ANALOG_SIG_FXSLS:
 		case ANALOG_SIG_FXSGS:
 		case ANALOG_SIG_FXSKS:

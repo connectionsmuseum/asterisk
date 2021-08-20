@@ -11323,6 +11323,7 @@ static struct dahdi_pvt *handle_init_event(struct dahdi_pvt *i, int event)
 		case SIG_SF_FEATDMF:
 		case SIG_SF_FEATB:
 		case SIG_SF:
+		case SIG_RPT:
 			/* Check for callerid, digits, etc */
 			callid_created = ast_callid_threadstorage_auto(&callid);
 			if (i->cid_start == CID_START_POLARITY_IN) {
