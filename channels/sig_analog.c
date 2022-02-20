@@ -27,8 +27,6 @@
 	<support_level>core</support_level>
  ***/
 
-#define HEARPULSING 1
-
 #include "asterisk.h"
 
 #include <errno.h>
@@ -1226,7 +1224,7 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 
 			ast_debug(1, "Reached analog_call in RPO mode.\n");
 
-		/* Do some RP math */
+		/* Do some RP math to convert a phone number to selections*/
 
 			int selections[7] = {0};		/* OB, OG, IB, IG, FB, FT, FU */
 			char lineno[4] = {0};			/* subscribers line number */
@@ -1354,14 +1352,11 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 		return -1;
 	}
 
-#if HEARPULSING == 1
 	/* hearpulsing */
-	ast_verb(1, "Hearpulsing is %d\n", p->hearpulsing);
 	if (p->hearpulsing == 1) {
 		ast_verb(3, "Enqueueing progress frame when dialling has begun in chan %d\n", p->channel);
 		ast_queue_control(p->owner, AST_CONTROL_PROGRESS);
 	}
-#endif
 
 	return 0;
 }
@@ -1851,6 +1846,9 @@ static void *__analog_ss_thread(void *data)
 	int len = 0;
 	int res;
 	int idx;
+	int selections[7] = {0};		/* OB, OG, IB, IG, FB, FT, FU */
+	int selidx = 0;
+	int lineno[10] = {0};
 	ast_callid callid;
 	RAII_VAR(struct ast_features_pickup_config *, pickup_cfg, NULL, ao2_cleanup);
 	const char *pickupexten;
@@ -2779,6 +2777,7 @@ static void *__analog_ss_thread(void *data)
 						 * Detect callerid while collecting possible
 						 * distinctive ring pattern.
 						 */
+						ast_debug(1, "Doing something with p->ringt in sig_analog\n");
 						ring_data[ring_data_idx] = p->ringt;
 						++ring_data_idx;
 					}
@@ -2815,6 +2814,108 @@ static void *__analog_ss_thread(void *data)
 			ast_log(LOG_WARNING, "PBX exited non-zero\n");
 		}
 		goto quit;
+	case ANALOG_SIG_RPT:			// XXX SA RPT be a term sender/commutator
+		selidx = 2;					// Skipping office selections for now
+		selections[selidx] = '\0';
+		while (selidx <= 7) {		// Can't match extension yet since we don't know it.
+			res = ast_waitfordigit(chan, 5000);
+			if (res < 0) {
+				ast_debug(1, "waitfordigit returned < 0...\n");
+				ast_hangup(chan);
+				goto quit;
+			} else if (res) {
+				selections[selidx++] = res - '0';
+				selections[selidx] = '\0';
+				ast_debug(1, "Storing a %d at %d\n", (selections[selidx-1]), (selidx-1));
+
+				if (selidx == 7) {
+					ast_debug(1, "Evaluating selections: %d,%d,%d,%d,%d\n", 
+							selections[2], selections[3], selections[4], selections[5], selections[6]);
+
+					/* Do some RP math to convert selections to a phone number */
+					
+					lineno[2] = selections[6];      // units
+					lineno[1] = selections[5];      // tens
+					lineno[0] = selections[4];      // Final Brush - hundreds
+
+					switch (selections[3]) {         // Incoming Group - hundreds
+						case 0:
+							break;
+						case 1:
+						case 2:
+						case 3:
+							lineno[0] = lineno[0] + selections[3] * 5;
+							break;
+						default:
+							break;
+					}
+
+					switch (selections[2]) {         // Incoming Brush - thousands
+						case 0:
+							break;
+						case 1:
+						case 2:
+						case 3:
+						case 4:
+							lineno[0] = lineno[0] + selections[2] * 20;
+							break;
+						default:
+							break;
+					}
+
+					/* To make the int array a str, we have to get crafty,
+					   because element 0 in lineno has 2 digits (math!) 
+					   one of which may be a 0 */
+					snprintf(exten, sizeof(exten)-1, "%02d%d%d",
+						lineno[0], lineno[1], lineno[2]);
+
+					ast_debug(1, "Line number is: %s\n", exten);
+
+
+					analog_set_echocanceller(p, 1);
+					analog_set_ringtimeout(p, p->ringt_base); // XXX SA p->ringt
+
+					if (ast_exists_extension(chan, ast_channel_context(chan), exten, 1,
+						ast_channel_caller(chan)->id.number.valid ? ast_channel_caller(chan)->id.number.str : NULL)) {
+						ast_channel_exten_set(chan, exten);
+						analog_dsp_reset_and_flush_digits(p);
+						ast_debug(1, "ast_exists_extension is: TRUE");
+#if 0
+						ast_channel_lock(chan);
+						ast_setstate(chan, AST_STATE_UP);
+						ast_channel_unlock(chan);
+#endif
+						p->subs[idx].f.frametype = AST_FRAME_CONTROL;
+						p->subs[idx].f.subclass.integer = AST_CONTROL_ANSWER;
+						res = ast_pbx_run(chan);
+						if (res) {
+							ast_log(LOG_WARNING, "PBX exited non-zero in SIG_RPT\n");
+							res = analog_play_tone(p, idx, ANALOG_TONE_CONGESTION);
+						}
+						goto quit;
+					} else {
+						ast_verb(3, "Unknown extension '%s' in context '%s' requested\n", exten, ast_channel_context(chan));
+						sleep(2);
+						res = analog_play_tone(p, idx, ANALOG_TONE_INFO);
+						if (res < 0) {
+							ast_log(LOG_WARNING, "Unable to start special tone on %d\n", p->channel);
+						} else {
+							sleep(1);
+						}
+						res = ast_streamfile(chan, "ss-noservice", ast_channel_language(chan));
+						if (res >= 0) {
+							ast_waitstream(chan, "");
+						}
+						res = analog_play_tone(p, idx, ANALOG_TONE_CONGESTION);
+						ast_hangup(chan);
+						goto quit;
+					}
+				}
+			} else {
+				break;
+			}
+		}
+		break;
 	default:
 		ast_log(LOG_WARNING, "Don't know how to handle simple switch with signalling %s on channel %d\n", analog_sigtype_to_str(p->sig), p->channel);
 		break;
@@ -2825,6 +2926,7 @@ static void *__analog_ss_thread(void *data)
 	}
 	ast_hangup(chan);
 quit:
+	ast_debug(1, "Breaking out of analog_ss_thread now");
 	ao2_cleanup(smdi_msg);
 	analog_decrease_ss_count();
 	return NULL;
@@ -2974,7 +3076,6 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 				ast_copy_string(p->dop.dialstr, p->echorest, sizeof(p->dop.dialstr));
 				p->dop.op = ANALOG_DIAL_OP_REPLACE;
 				analog_dial_digits(p, ANALOG_SUB_REAL, &p->dop);
-				ast_debug(3, "Bitch better not be dialing more digits if RPO");
 				p->echobreak = 0;
 			} else {
 				analog_set_dialing(p, 0);
@@ -3144,6 +3245,7 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 		}
 		break;
 	case ANALOG_EVENT_RINGOFFHOOK:
+		ast_debug(1, "RINGOFFHOOK in sig_analog analog_handle_event\n");
 		if (p->inalarm) {
 			break;
 		}
@@ -3179,7 +3281,7 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 				analog_on_hook(p);
 				return NULL;
 			}
-			analog_set_dialing(p, 1);			// XXX SA audio
+			analog_set_dialing(p, 1);
 			return &p->subs[idx].f;
 		}
 		switch (p->sig) {
@@ -3274,6 +3376,7 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 		case ANALOG_SIG_SF_FEATD:
 		case ANALOG_SIG_SF_FEATDMF:
 		case ANALOG_SIG_SF_FEATB:
+		case ANALOG_SIG_RPT:
 			switch (ast_channel_state(ast)) {
 			case AST_STATE_PRERING:
 				ast_setstate(ast, AST_STATE_RING);
@@ -3747,8 +3850,6 @@ struct ast_frame *analog_exception(struct analog_pvt *p, struct ast_channel *ast
 	int idx;
 	struct ast_frame *f;
 
-	ast_debug(1, "%s %d\n", __FUNCTION__, p->channel);
-
 	idx = analog_get_index(ast, p, 1);
 	if (idx < 0) {
 		idx = ANALOG_SUB_REAL;
@@ -3803,6 +3904,7 @@ struct ast_frame *analog_exception(struct analog_pvt *p, struct ast_channel *ast
 			analog_update_conf(p);
 			break;
 		case ANALOG_EVENT_RINGOFFHOOK:
+			ast_debug(1, "RINGOFFHOOK in sig_analog analog_exception\n");
 			analog_set_echocanceller(p, 1);
 			analog_off_hook(p);
 			if (p->owner && (ast_channel_state(p->owner) == AST_STATE_RINGING)) {
@@ -3876,6 +3978,7 @@ void *analog_handle_init_event(struct analog_pvt *i, int event)
 	switch (event) {
 	case ANALOG_EVENT_WINKFLASH:
 	case ANALOG_EVENT_RINGOFFHOOK:
+		ast_debug(1, "Got RINGOFFHOOK event in sig_analog analog_handle_init_event\n");
 		if (i->inalarm) {
 			break;
 		}
