@@ -52,7 +52,6 @@
 	<support_level>core</support_level>
  ***/
 
-#define HEARPULSING 1
 
 #include "asterisk.h"
 
@@ -8743,9 +8742,8 @@ static struct ast_frame *dahdi_read(struct ast_channel *ast)
 	ast_debug(1, "Read %d of voice on %s\n", p->subs[idx].f.datalen, ast->name);
 #endif
 	if (
-#if HEARPULSING == 0
-		(p->dialing && !p->waitingfordt.tv_sec) ||  p->radio || /* Transmitting something */
-#endif
+		(! p->hearpulsing &&
+			 ( (p->dialing && !p->waitingfordt.tv_sec) ||  p->radio )) /* Transmitting something */ ||
 		(idx && (ast_channel_state(ast) != AST_STATE_UP)) || /* Three-way or callwait that isn't up */
 		((idx == SUB_CALLWAIT) && !p->subs[SUB_CALLWAIT].inthreeway) /* Inactive and non-confed call-wait */
 		) {
