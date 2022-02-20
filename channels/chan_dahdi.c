@@ -11257,6 +11257,9 @@ static struct dahdi_pvt *handle_init_event(struct dahdi_pvt *i, int event)
 		case SIG_FXOLS:
 		case SIG_FXOGS:
 		case SIG_FXOKS:
+		case SIG_RPT:
+			
+			ast_debug(1, "Got RINGOFFHOOK event in chan_dahdi.c\n");
 			res = dahdi_set_hook(i->subs[SUB_REAL].dfd, DAHDI_OFFHOOK);
 			if (res && (errno == EBUSY)) {
 				break;
@@ -11323,7 +11326,7 @@ static struct dahdi_pvt *handle_init_event(struct dahdi_pvt *i, int event)
 		case SIG_SF_FEATDMF:
 		case SIG_SF_FEATB:
 		case SIG_SF:
-		case SIG_RPT:
+		// case SIG_RPT:  XXX SA this entire part of the code (above, too) is suspect
 			/* Check for callerid, digits, etc */
 			callid_created = ast_callid_threadstorage_auto(&callid);
 			if (i->cid_start == CID_START_POLARITY_IN) {
@@ -11420,6 +11423,7 @@ static struct dahdi_pvt *handle_init_event(struct dahdi_pvt *i, int event)
 		case SIG_FXSGS:
 		case SIG_FXSKS:
 		case SIG_FXOKS:
+		case SIG_RPT:
 			dahdi_ec_disable(i);
 			/* Diddle the battery for the zhone */
 #ifdef ZHONE_HACK
@@ -11767,8 +11771,10 @@ static void *do_monitor(void *data)
 					ast_mutex_unlock(&iflock);
 					if (0 == i->mwisendactive || 0 == mwi_send_process_event(i, res)) {
 						if (dahdi_analog_lib_handles(i->sig, i->radio, i->oprmode))
+							// this gets called for RPO XXX SA
 							doomed = (struct dahdi_pvt *) analog_handle_init_event(i->sig_pvt, dahdievent_to_analogevent(res));
 						else
+							// this does not get called for RPO XXX SA
 							doomed = handle_init_event(i, res);
 					}
 					ast_mutex_lock(&iflock);
@@ -11776,6 +11782,8 @@ static void *do_monitor(void *data)
 			}
 		}
 		ast_mutex_unlock(&iflock);
+		// XXX SA
+		// pri never released, because i never see the debug message in the below function
 		release_doomed_pris();
 #ifdef HAVE_OPENR2
 		dahdi_r2_destroy_nodev();
