@@ -4039,6 +4039,8 @@ void *analog_handle_init_event(struct analog_pvt *i, int event)
 		case ANALOG_SIG_SF_FEATB:
 		case ANALOG_SIG_SF:
 		case ANALOG_SIG_SFWINK:
+		case ANALOG_SIG_RPO:		// *** SA This avoids messages dumped to the console for RP cards when I restart DAHDI
+		case ANALOG_SIG_RPT:		//
 		case ANALOG_SIG_FXSLS:
 		case ANALOG_SIG_FXSGS:
 		case ANALOG_SIG_FXSKS:
