@@ -1221,6 +1221,7 @@ int analog_call(struct analog_pvt *p, struct ast_channel *ast, const char *rdest
 			break;
 
 		case ANALOG_SIG_RPO:		// XXX SA This is where we go when we are making an outbound call.
+									// RPT D4 card. Asterisk sender, Panel selector.
 
 			ast_debug(1, "Reached analog_call in RPO mode.\n");
 
@@ -2743,7 +2744,7 @@ static void *__analog_ss_thread(void *data)
 			ast_log(LOG_WARNING, "PBX exited non-zero\n");
 		}
 		goto quit;
-	case ANALOG_SIG_RPT:			// XXX SA RPT be a term sender/commutator
+	case ANALOG_SIG_RPT:			// XXX SA RPT Asterisk is a term sender/commutator
 		selidx = 2;					// Skipping office selections for now
 		selections[selidx] = '\0';
 		while (selidx <= 7) {		// Can't match extension yet since we don't know it.
@@ -2802,13 +2803,13 @@ static void *__analog_ss_thread(void *data)
 
 
 					analog_set_echocanceller(p, 1);
-					analog_set_ringtimeout(p, p->ringt_base); // XXX SA p->ringt
+					analog_set_ringtimeout(p, 0); // XXX SA p->ringt set to 0 to disable timeout?? does this work?
 
 					if (ast_exists_extension(chan, ast_channel_context(chan), exten, 1,
 						ast_channel_caller(chan)->id.number.valid ? ast_channel_caller(chan)->id.number.str : NULL)) {
 						ast_channel_exten_set(chan, exten);
 						analog_dsp_reset_and_flush_digits(p);
-						ast_debug(1, "ast_exists_extension is: TRUE");
+						ast_debug(1, "ast_exists_extension is: TRUE and is %s", exten);
 #if 0
 						ast_channel_lock(chan);
 						ast_setstate(chan, AST_STATE_UP);
