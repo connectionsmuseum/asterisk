@@ -2815,10 +2815,15 @@ static void *__analog_ss_thread(void *data)
 			ast_log(LOG_WARNING, "PBX exited non-zero\n");
 		}
 		goto quit;
-	case ANALOG_SIG_RPT:			// XXX SA RPT Asterisk is a term sender/commutator
-		selidx = 2;					// Skipping office selections for now
+	case ANALOG_SIG_RPT:			// RPT: Asterisk is a term sender/commutator
+		ast_debug(1, "Office Selections is set to %d", p->officeselections);
+		if (p->officeselections == 1) {
+			selidx = 0;
+		} else {
+			selidx = 2;
+		}
 		selections[selidx] = '\0';
-		while (selidx <= 7) {		// Can't match extension yet since we don't know it.
+		while (selidx <= 7) {
 			res = ast_waitfordigit(chan, 5000);
 			if (res < 0) {
 				ast_debug(1, "waitfordigit returned < 0...\n");
@@ -2830,7 +2835,11 @@ static void *__analog_ss_thread(void *data)
 				ast_debug(1, "Storing a %d at %d\n", (selections[selidx-1]), (selidx-1));
 
 				if (selidx == 7) {
-					ast_debug(1, "Evaluating selections: %d,%d,%d,%d,%d\n", 
+					// XXX SA need to send a polarity reversal ioctl to DAHDI
+					analog_wink(p, idx);
+					ast_debug(1, "Sent a wink to DAHDI");
+					ast_debug(1, "Evaluating selections: %d,%d,%d,%d,%d,%d,%d\n", 
+							selections[0], selections[1],
 							selections[2], selections[3], selections[4], selections[5], selections[6]);
 
 					/* Do some RP math to convert selections to a phone number */
@@ -2867,25 +2876,28 @@ static void *__analog_ss_thread(void *data)
 					/* To make the int array a str, we have to get crafty,
 					   because element 0 in lineno has 2 digits (math!) 
 					   one of which may be a 0 */
-					snprintf(exten, sizeof(exten)-1, "%02d%d%d",
-						lineno[0], lineno[1], lineno[2]);
-
+					if (p->officeselections == 1) {
+						snprintf(exten, sizeof(exten)-1, "%d%d%02d%d%d",
+								selections[0], selections[1],
+								lineno[0], lineno[1], lineno[2]);
+					} else {
+						snprintf(exten, sizeof(exten)-1, "%02d%d%d",
+							lineno[0], lineno[1], lineno[2]);
+					}
 					ast_debug(1, "Line number is: %s\n", exten);
 
 
 					analog_set_echocanceller(p, 1);
-					analog_set_ringtimeout(p, 0); // XXX SA p->ringt set to 0 to disable timeout?? does this work?
+					analog_set_ringtimeout(p, 0); // set to 0 to disable timeout?? does this work?
 
 					if (ast_exists_extension(chan, ast_channel_context(chan), exten, 1,
 						ast_channel_caller(chan)->id.number.valid ? ast_channel_caller(chan)->id.number.str : NULL)) {
 						ast_channel_exten_set(chan, exten);
 						analog_dsp_reset_and_flush_digits(p);
 						ast_debug(1, "ast_exists_extension is: TRUE and is %s", exten);
-#if 0
-						ast_channel_lock(chan);
+						ast_channel_lock(chan); // XXX SA removed if0 Saturday
 						ast_setstate(chan, AST_STATE_UP);
 						ast_channel_unlock(chan);
-#endif
 						p->subs[idx].f.frametype = AST_FRAME_CONTROL;
 						p->subs[idx].f.subclass.integer = AST_CONTROL_ANSWER;
 						res = ast_pbx_run(chan);
@@ -3976,7 +3988,7 @@ void *analog_handle_init_event(struct analog_pvt *i, int event)
 				i->channel, i->sig, analog_event2str(event));
 
 	/* Handle an event on a given channel for the monitor thread. */
-	switch (event) {
+	switch (event) {		// this probably wont work
 	case ANALOG_EVENT_WINKFLASH:
 	case ANALOG_EVENT_RINGOFFHOOK:
 		ast_debug(1, "Got RINGOFFHOOK event in sig_analog analog_handle_init_event\n");

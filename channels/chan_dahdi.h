@@ -446,6 +446,10 @@ struct dahdi_pvt {
 	 * \analog channels
 	 */
 	unsigned int hearpulsing:1;
+	/*!brief TRUE if the channel requires office frame selections
+	 * \to complete the call
+	 */
+	unsigned int officeselections:1;
 	/*!
 	 * \brief TRUE if SMDI (Simplified Message Desk Interface) is enabled
 	 * \note Set from the "usesmdi" value read in from chan_dahdi.conf

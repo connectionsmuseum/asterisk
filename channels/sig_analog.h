@@ -313,6 +313,11 @@ struct analog_pvt {
 	 */
 	unsigned int hearpulsing:1;
 
+	/*!\brief TRUE if the the channel requires office frame selections
+	 * \to complete the call
+	 */
+	unsigned int officeselections:1;
+
 	/* Not used for anything but log messages.  Could be just the TCID */
 	int channel;					/*!< Channel Number */
 
