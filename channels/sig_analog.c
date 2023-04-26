@@ -2824,7 +2824,7 @@ static void *__analog_ss_thread(void *data)
 		}
 		selections[selidx] = '\0';
 		while (selidx <= 7) {
-			res = ast_waitfordigit(chan, 5000);
+			res = ast_waitfordigit(chan, 10000);
 			if (res < 0) {
 				ast_debug(1, "waitfordigit returned < 0...\n");
 				ast_hangup(chan);
