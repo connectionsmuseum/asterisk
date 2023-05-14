@@ -2812,7 +2812,7 @@ static void *__analog_ss_thread(void *data)
 		while (selidx <= 7) {
 			res = ast_waitfordigit(chan, 10000);
 			if (res < 0) {
-				ast_debug(1, "waitfordigit returned < 0...\n");
+				ast_debug(1, "RPT: ast_waitfordigit returned < 0...\n");
 				ast_hangup(chan);
 				goto quit;
 			} else if (res) {
@@ -3108,17 +3108,6 @@ static struct ast_frame *__analog_handle_event(struct analog_pvt *p, struct ast_
 					}
 				}
 			}
-#if 0
-			if (mysig == ANALOG_SIG_RPO) {
-				ast_debug(1, "Done dialing, recognized RPO state. Doing the thing");
-				ast_setstate(ast, AST_STATE_RINGING);
-				ast_setstate(ast, AST_STATE_UP);
-				p->subs[idx].f.frametype = AST_FRAME_CONTROL;
-				p->subs[idx].f.subclass.integer = AST_CONTROL_ANSWER;
-
-			}
-#endif
-
 		}
 		break;
 	case ANALOG_EVENT_ALARM:
